@@ -4,10 +4,10 @@ import { join, extname, resolve, relative, dirname, normalize } from 'node:path'
 const root = resolve(process.cwd());
 const failures = [];
 const publicMode = process.env.PUBLIC_QA === 'YES';
-const required = ['index.html','editor.html','assets/site.css','assets/editor.css','assets/save-fix.css','js/editor-data.js','js/editor-render.js','js/editor-actions.js','js/editor.js','robots.txt','sitemap.xml','privacy.html','terms.html','404.html'];
+const required = ['index.html','editor.html','assets/site.css','assets/editor.css','assets/save-fix.css','js/editor-data.js','js/editor-render.js','js/editor-actions.js','js/editor.js','robots.txt','sitemap.xml','privacy.html','terms.html','404.html','netlify.toml','scripts/netlify-build.mjs'];
 for (const f of required) if (!existsSync(join(root,f))) failures.push(`Missing required file: ${f}`);
 
-const textExt = new Set(['.html','.css','.js','.mjs','.json','.md','.txt','.xml','.svg','.yml','.yaml']);
+const textExt = new Set(['.html','.css','.js','.mjs','.json','.md','.txt','.xml','.svg','.yml','.yaml','.toml']);
 const secretPatterns = [
   ['OpenRouter key', /sk-or-v1-[A-Za-z0-9_-]{20,}/g],
   ['GitHub token', /gh[pousr]_[A-Za-z0-9]{30,}/g],
@@ -18,7 +18,7 @@ const secretPatterns = [
 const htmlFiles=[];
 function walk(dir){
   for(const name of readdirSync(dir)){
-    if(name==='.git'||name==='node_modules') continue;
+    if(name==='.git'||name==='node_modules'||name==='_site') continue;
     const p=join(dir,name), st=statSync(p);
     if(st.isDirectory()) walk(p);
     else if(textExt.has(extname(name).toLowerCase())){
@@ -81,9 +81,16 @@ for(const src of editorFiles){
   if(!new RegExp(`<script src=["']${src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}["']`).test(editorHtml)) failures.push(`editor.html is not loading ${src}`);
 }
 
+const netlify=readFileSync(join(root,'netlify.toml'),'utf8');
+const netlifyBuild=readFileSync(join(root,'scripts/netlify-build.mjs'),'utf8');
+if(!/publish\s*=\s*"_site"/.test(netlify)||!/node scripts\/netlify-build\.mjs/.test(netlify)) failures.push('Netlify must publish only the generated _site bundle.');
+if(!/X-Content-Type-Options/.test(netlify)||!/X-Frame-Options/.test(netlify)) failures.push('Netlify response security headers missing.');
+if(!/X-Robots-Tag: noindex, nofollow, noarchive/.test(netlifyBuild)||!/branch === 'prelaunch'/.test(netlifyBuild)) failures.push('Netlify prelaunch noindex protection missing.');
+for(const forbidden of ['docs','.github','scripts']) if(new RegExp(`publicDirs\\s*=.*['\"]${forbidden}['\"]`).test(netlifyBuild)) failures.push(`Private/internal directory must not be in Netlify publicDirs: ${forbidden}`);
+
 if(failures.length){
   console.error('FOLIOWISH QA FAILED');
   failures.forEach(x=>console.error('- '+x));
   process.exit(1);
 }
-console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + central safe validation + mobile editing + A4 print wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);
+console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + central safe validation + mobile editing + A4 print + safe Netlify staging wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);

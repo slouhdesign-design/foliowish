@@ -2,6 +2,10 @@
   'use strict';
   const FW = window.FolioWishStudio = window.FolioWishStudio || {};
   FW.STORAGE_KEY = 'foliowish-project-v1';
+  FW.STORAGE_META_KEY = 'foliowish-project-v1-meta';
+  FW.DB_NAME = 'foliowish-studio';
+  FW.DB_STORE = 'projects';
+  FW.DB_RECORD = 'current';
   FW.MAX_HISTORY = 30;
   FW.themes = {
     rose:{label:'Editorial Rose',accent:'#ee5c81',bg:'#fff3f5',soft:'#fbe3e9',ink:'#17151d'},
@@ -15,10 +19,10 @@
   };
   FW.pageTypes = [['cover','Cover'],['profile','Profile'],['reasons','Reasons'],['gallery','Photo story'],['letter','Letter'],['timeline','Timeline'],['playlist','Playlist'],['backcover','Back cover']];
   FW.uid = () => 'p'+Math.random().toString(36).slice(2,10);
-  FW.esc = (v='') => String(v).replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
+  FW.esc = (v='') => String(v).replace(/[&<>'\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[m]));
   FW.clone = v => JSON.parse(JSON.stringify(v));
   FW.defaultProject = {
-    version:1,title:'Birthday Magazine',theme:'rose',active:0,zoom:.72,
+    version:1,title:'Birthday Magazine',theme:'rose',active:0,zoom:.72,updatedAt:0,
     person:{name:'Sophia',age:'18',relationship:'Best friend',vibe:'warm',memory:'Late-night drives, terrible karaoke, and somehow always finding the best coffee.'},
     pages:[
       {id:FW.uid(),type:'cover',headline:'HAPPY BIRTHDAY',subline:'THE OFFICIAL BIRTHDAY ISSUE',bubble:'Best wishes, big love & a very good day.',side:'FRIENDS’ MESSAGES\nMEMORIES INSIDE',photos:{}},
@@ -31,16 +35,64 @@
       {id:FW.uid(),type:'backcover',headline:'Here’s to the next story.',body:'Keep the photos. Keep the jokes. Keep choosing the life that feels like yours.',photos:{}}
     ]
   };
+
+  FW.setSaveState = (message,saved=false) => {
+    const state=document.querySelector('#saveState'),button=document.querySelector('#saveBtn');
+    if(state) state.textContent=message;
+    if(button){ button.dataset.saved=saved?'true':'false'; button.textContent=saved?'Saved':'Save'; }
+  };
+
   FW.loadProject = () => {
     try { const raw=localStorage.getItem(FW.STORAGE_KEY); if(raw){const p=JSON.parse(raw);if(p?.version===1&&Array.isArray(p.pages))return p;} } catch {}
     return FW.clone(FW.defaultProject);
   };
   FW.project = FW.loadProject();
   FW.history=[JSON.stringify(FW.project)]; FW.historyIndex=0; FW.safeVisible=false; FW.pendingPhotoSlot=null;
-  FW.save = (push=true) => {
-    try { localStorage.setItem(FW.STORAGE_KEY,JSON.stringify(FW.project)); const s=document.querySelector('#saveState'); if(s)s.textContent='Saved locally'; }
-    catch { const s=document.querySelector('#saveState'); if(s)s.textContent='Storage full — backup now'; }
-    if(push){const snap=JSON.stringify(FW.project);if(FW.history[FW.historyIndex]!==snap){FW.history=FW.history.slice(0,FW.historyIndex+1);FW.history.push(snap);if(FW.history.length>FW.MAX_HISTORY)FW.history.shift();FW.historyIndex=FW.history.length-1;}}
+
+  FW.openProjectDB = () => new Promise((resolve,reject) => {
+    if(!('indexedDB' in window)){ reject(new Error('IndexedDB unavailable')); return; }
+    const request=indexedDB.open(FW.DB_NAME,1);
+    request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(FW.DB_STORE))db.createObjectStore(FW.DB_STORE);};
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error||new Error('Could not open local database'));
+  });
+  FW.saveToIndexedDB = async value => {
+    const db=await FW.openProjectDB();
+    try{
+      await new Promise((resolve,reject)=>{const tx=db.transaction(FW.DB_STORE,'readwrite');tx.objectStore(FW.DB_STORE).put(value,FW.DB_RECORD);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Local database write failed'));tx.onabort=()=>reject(tx.error||new Error('Local database write aborted'));});
+    }finally{db.close();}
+  };
+  FW.loadFromIndexedDB = async () => {
+    const db=await FW.openProjectDB();
+    try{
+      return await new Promise((resolve,reject)=>{const tx=db.transaction(FW.DB_STORE,'readonly');const request=tx.objectStore(FW.DB_STORE).get(FW.DB_RECORD);request.onsuccess=()=>resolve(request.result||null);request.onerror=()=>reject(request.error||new Error('Local database read failed'));});
+    }finally{db.close();}
+  };
+  FW.pushHistory = () => {
+    const snap=JSON.stringify(FW.project);
+    if(FW.history[FW.historyIndex]!==snap){FW.history=FW.history.slice(0,FW.historyIndex+1);FW.history.push(snap);if(FW.history.length>FW.MAX_HISTORY)FW.history.shift();FW.historyIndex=FW.history.length-1;}
+  };
+  FW.save = async (push=true,manual=false) => {
+    if(push) FW.pushHistory();
+    FW.project.updatedAt=Date.now();
+    FW.setSaveState(manual?'Saving project…':'Saving…',false);
+    let durable=false,fallback=false;
+    try{await FW.saveToIndexedDB(FW.clone(FW.project));durable=true;}catch{}
+    try{localStorage.setItem(FW.STORAGE_KEY,JSON.stringify(FW.project));fallback=true;}catch{}
+    try{localStorage.setItem(FW.STORAGE_META_KEY,JSON.stringify({updatedAt:FW.project.updatedAt}));}catch{}
+    if(durable||fallback){const time=new Date(FW.project.updatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});FW.setSaveState(`Saved ${time}`,true);return true;}
+    FW.setSaveState('Could not save — use Backup',false);
+    if(manual) alert('This browser blocked local project storage. Use Backup to download a project file.');
+    return false;
+  };
+  FW.hydrateFromStorage = async () => {
+    try{
+      const stored=await FW.loadFromIndexedDB();
+      if(stored?.version===1&&Array.isArray(stored.pages)&&Number(stored.updatedAt||0)>Number(FW.project.updatedAt||0)){
+        FW.project=stored;FW.history=[JSON.stringify(FW.project)];FW.historyIndex=0;FW.syncInputs?.();FW.renderAll?.(false);FW.setSaveState('Restored saved project',true);return true;
+      }
+    }catch{}
+    return false;
   };
   FW.restoreHistory = i => { if(i<0||i>=FW.history.length)return;FW.historyIndex=i;FW.project=JSON.parse(FW.history[i]);FW.syncInputs?.();FW.renderAll?.(false);FW.save(false); };
 })();

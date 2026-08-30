@@ -4,7 +4,7 @@ import { join, extname, resolve, relative, dirname, normalize } from 'node:path'
 const root = resolve(process.cwd());
 const failures = [];
 const publicMode = process.env.PUBLIC_QA === 'YES';
-const required = ['index.html','editor.html','assets/site.css','assets/editor.css','js/editor-data.js','js/editor-render.js','js/editor-actions.js','js/editor.js','robots.txt','sitemap.xml','privacy.html','terms.html','404.html'];
+const required = ['index.html','editor.html','assets/site.css','assets/editor.css','assets/save-fix.css','js/editor-data.js','js/editor-render.js','js/editor-actions.js','js/editor.js','robots.txt','sitemap.xml','privacy.html','terms.html','404.html'];
 for (const f of required) if (!existsSync(join(root,f))) failures.push(`Missing required file: ${f}`);
 
 const textExt = new Set(['.html','.css','.js','.mjs','.json','.md','.txt','.xml','.svg','.yml','.yaml']);
@@ -59,13 +59,17 @@ for(const [path,html] of htmlFiles){
 
 const editorFiles=['js/editor-data.js','js/editor-render.js','js/editor-actions.js','js/editor.js'];
 const editor=editorFiles.filter(f=>existsSync(join(root,f))).map(f=>readFileSync(join(root,f),'utf8')).join('\n');
+const editorHtml=readFileSync(join(root,'editor.html'),'utf8');
 if(/fetch\s*\(/.test(editor)) failures.push('Editor must not make network fetches in the privacy-first pre-launch build.');
 if(!/compressImage/.test(editor)) failures.push('Photo compression function missing.');
 if(!/window\.print/.test(editor)) failures.push('PDF/print export flow missing.');
-if(!/localStorage/.test(editor)) failures.push('Local autosave flow missing.');
+if(!/localStorage/.test(editor)) failures.push('Local storage fallback missing.');
+if(!/indexedDB/.test(editor)) failures.push('Durable IndexedDB project storage missing.');
+if(!/saveBtn/.test(editor)||!/id="saveBtn"/.test(editorHtml)) failures.push('Explicit Save control or wiring missing.');
+if(!/hydrateFromStorage/.test(editor)) failures.push('Reload persistence hydration missing.');
 if(!/Smart-fill|smartFill/.test(editor)) failures.push('Smart Fill flow missing.');
 for(const src of editorFiles){
-  if(!new RegExp(`<script src=["']${src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}["']`).test(readFileSync(join(root,'editor.html'),'utf8'))) failures.push(`editor.html is not loading ${src}`);
+  if(!new RegExp(`<script src=["']${src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}["']`).test(editorHtml)) failures.push(`editor.html is not loading ${src}`);
 }
 
 if(failures.length){
@@ -73,4 +77,4 @@ if(failures.length){
   failures.forEach(x=>console.error('- '+x));
   process.exit(1);
 }
-console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);
+console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);

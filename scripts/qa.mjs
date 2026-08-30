@@ -60,6 +60,7 @@ for(const [path,html] of htmlFiles){
 const editorFiles=['js/editor-data.js','js/editor-render.js','js/editor-actions.js','js/editor.js'];
 const editor=editorFiles.filter(f=>existsSync(join(root,f))).map(f=>readFileSync(join(root,f),'utf8')).join('\n');
 const editorHtml=readFileSync(join(root,'editor.html'),'utf8');
+const editorCss=['assets/editor.css','assets/save-fix.css'].map(f=>readFileSync(join(root,f),'utf8')).join('\n');
 if(/fetch\s*\(/.test(editor)) failures.push('Editor must not make network fetches in the privacy-first pre-launch build.');
 if(!/compressImage/.test(editor)) failures.push('Photo compression function missing.');
 if(!/window\.print/.test(editor)) failures.push('PDF/print export flow missing.');
@@ -70,6 +71,11 @@ if(!/hydrateFromStorage/.test(editor)) failures.push('Reload persistence hydrati
 if(!/Smart-fill|smartFill/.test(editor)) failures.push('Smart Fill flow missing.');
 if(!/isImportableProject/.test(editor)) failures.push('Hardened project import validation missing.');
 if(!/safePhoto/.test(editor)||!/\^data:image/.test(editor)) failures.push('Imported photo sources are not restricted to embedded image data URLs.');
+if(!/id="mobilePageInspector"/.test(editorHtml)||!/id="mobilePersonName"/.test(editorHtml)||!/id="mobileBackupBtn"/.test(editorHtml)) failures.push('Full mobile Studio editing/backup controls are missing.');
+if(!/mobilePageInspector/.test(editor)||!/mobilePersonName/.test(editor)) failures.push('Mobile Studio controls are not wired into editor rendering/actions.');
+if(!/@page\s*\{[^}]*size\s*:\s*A4\s+portrait/i.test(editorCss)) failures.push('A4 print page sizing rule missing.');
+if(!/print-color-adjust\s*:\s*exact/i.test(editorCss)) failures.push('Exact print color output rule missing.');
+if(!/ordinal\s*=/.test(editor)||!/ST/.test(editor)||!/ND/.test(editor)||!/RD/.test(editor)) failures.push('Birthday ordinal formatting helper missing.');
 for(const src of editorFiles){
   if(!new RegExp(`<script src=["']${src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}["']`).test(editorHtml)) failures.push(`editor.html is not loading ${src}`);
 }
@@ -79,4 +85,4 @@ if(failures.length){
   failures.forEach(x=>console.error('- '+x));
   process.exit(1);
 }
-console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + safe import wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);
+console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + safe import + mobile editing + A4 print wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);

@@ -21,6 +21,23 @@
   FW.uid = () => 'p'+Math.random().toString(36).slice(2,10);
   FW.esc = (v='') => String(v).replace(/[&<>'\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[m]));
   FW.clone = v => JSON.parse(JSON.stringify(v));
+  FW.isValidProject = p => {
+    if(!p||p.version!==1||!Array.isArray(p.pages)||!p.pages.length||!p.person||typeof p.person!=='object'||Array.isArray(p.person))return false;
+    const zoom=Number(p.zoom);
+    if(!Number.isInteger(p.active)||p.active<0||p.active>=p.pages.length||!Number.isFinite(zoom)||zoom<.35||zoom>1.05||!FW.themes[p.theme])return false;
+    const text=v=>v==null||typeof v==='string',personFields=['name','age','relationship','vibe','memory'];
+    if(!personFields.every(k=>text(p.person[k])))return false;
+    const types=new Set(FW.pageTypes.map(([key])=>key)),safePhoto=/^data:image\/(?:jpeg|jpg|png|webp);base64,[a-z0-9+/=\r\n]+$/i;
+    return p.pages.every(page=>{
+      if(!page||typeof page!=='object'||Array.isArray(page)||!types.has(page.type))return false;
+      if(page.photos!=null){if(typeof page.photos!=='object'||Array.isArray(page.photos))return false;for(const src of Object.values(page.photos))if(typeof src!=='string'||!safePhoto.test(src))return false;}
+      if(page.type==='profile'&&page.facts!=null&&!Array.isArray(page.facts))return false;
+      if(page.type==='reasons'&&page.reasons!=null&&!Array.isArray(page.reasons))return false;
+      if(page.type==='playlist'&&page.tracks!=null&&!Array.isArray(page.tracks))return false;
+      if(page.type==='timeline'&&page.items!=null&&(!Array.isArray(page.items)||!page.items.every(it=>Array.isArray(it)&&it.length>=2&&text(it[0])&&text(it[1]))))return false;
+      return true;
+    });
+  };
   FW.defaultProject = {
     version:1,title:'Birthday Magazine',theme:'rose',active:0,zoom:.72,updatedAt:0,
     person:{name:'Sophia',age:'18',relationship:'Best friend',vibe:'warm',memory:'Late-night drives, terrible karaoke, and somehow always finding the best coffee.'},
@@ -43,7 +60,7 @@
   };
 
   FW.loadProject = () => {
-    try { const raw=localStorage.getItem(FW.STORAGE_KEY); if(raw){const p=JSON.parse(raw);if(p?.version===1&&Array.isArray(p.pages))return p;} } catch {}
+    try { const raw=localStorage.getItem(FW.STORAGE_KEY); if(raw){const p=JSON.parse(raw);if(FW.isValidProject(p))return p;} } catch {}
     return FW.clone(FW.defaultProject);
   };
   FW.project = FW.loadProject();
@@ -88,7 +105,7 @@
   FW.hydrateFromStorage = async () => {
     try{
       const stored=await FW.loadFromIndexedDB();
-      if(stored?.version===1&&Array.isArray(stored.pages)&&Number(stored.updatedAt||0)>Number(FW.project.updatedAt||0)){
+      if(FW.isValidProject(stored)&&Number(stored.updatedAt||0)>Number(FW.project.updatedAt||0)){
         FW.project=stored;FW.history=[JSON.stringify(FW.project)];FW.historyIndex=0;FW.syncInputs?.();FW.renderAll?.(false);FW.setSaveState('Restored saved project',true);return true;
       }
     }catch{}

@@ -21,10 +21,10 @@ No build step and no third-party runtime dependencies. Plain HTML, CSS and JavaS
 - `docs/` — product, SEO, AdSense and launch gates
 
 ## Product
-The first FolioWish maker creates an A4 birthday magazine with guided cover, profile, reasons, gallery, timeline, playlist, letter and back-cover layouts. It includes eight editorial themes, Smart Fill, local photo compression, autosave, project backup/import, undo/redo, a print-safe overlay, Studio Check and browser PDF export.
+The first FolioWish maker creates an A4 birthday magazine with guided cover, profile, reasons, gallery, timeline, playlist, letter and back-cover layouts. It includes eight editorial themes, Smart Fill, local photo compression, explicit Save + autosave, project backup/import, undo/redo, a print-safe overlay, Studio Check and browser PDF export.
 
 ## Privacy
-The pre-launch editor stores project data in browser `localStorage`. Uploaded photos are compressed client-side. No photo-upload API or editor network request is present.
+The pre-launch editor stores the full project locally in IndexedDB with a `localStorage` fallback. Uploaded photos are compressed client-side. No photo-upload API or editor network request is present. Backup downloads a portable JSON project file.
 
 ## Quality
 

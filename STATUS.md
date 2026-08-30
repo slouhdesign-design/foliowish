@@ -7,10 +7,14 @@
 - Planned domain: `foliowish.com`.
 - Durable Save is present with IndexedDB plus `localStorage` fallback, explicit Save, autosave, backup/import and reload hydration.
 - Backup import is hardened: project shape is validated before use and imported photo sources are restricted to embedded image data URLs, preventing malformed backups from crashing the Studio or introducing remote image requests.
-- `Quality Gate` was rewritten to be self-contained and no longer depends on `actions/checkout` or `actions/setup-node`; it starts with a plain shell runner smoke check.
-- Run #55 still failed before any step was created (`steps = null`). This isolates the remaining CI blocker to GitHub Actions runner/account/repository infrastructure rather than FolioWish workflow steps or application code.
-- `qa.mjs` now also guards the hardened project-import validator and the embedded-image-only backup rule.
+- Mobile Studio now has full person/setup fields, page-content editing, theme/page library controls, and project backup/import access instead of preview-only editing.
+- Smart Fill now formats birthday ordinals correctly (for example 21ST instead of 21TH) and keeps the Reasons headline consistent with the 18-item layout limit.
+- A4 export is hardened with an explicit `@page` rule, exact print-color output, mobile-drawer suppression during print, and a double-animation-frame handoff before opening the browser print dialog.
+- `qa.mjs` now guards safe import, mobile editing/backup wiring, ordinal formatting, A4 page sizing, and exact print color rules.
+- The canonical GitHub Actions workflow was restored after a diagnostic no-Marketplace-actions experiment. Run #62 still fails before any job step is created (`steps = null`), so the remaining CI blocker is outside FolioWish workflow commands/application code and must be resolved in GitHub Actions runner/account/repository execution settings.
 - Repository source search found no OpenRouter or Brevo key signatures in the accessible code index.
-- Next durable milestone: restore GitHub-hosted runner execution, then run the complete static gate plus browser/mobile/PDF QA before public launch.
+- Public deployment remains blocked until runtime browser checks at mobile/desktop widths and Chromium PDF output are verified and the owner explicitly approves launch.
+
+Next durable milestone: resolve hosted-runner execution, run the full static gate, then complete browser/mobile/PDF QA and only after that prepare a clean staging preview.
 
 This file is updated at each major milestone so work can resume from GitHub without relying on chat memory or a temporary filesystem.

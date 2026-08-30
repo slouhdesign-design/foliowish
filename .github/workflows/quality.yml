@@ -15,4 +15,7 @@ jobs:
         with:
           node-version: 22
       - run: npm run qa
+      - run: node --check js/editor-data.js
+      - run: node --check js/editor-render.js
+      - run: node --check js/editor-actions.js
       - run: node --check js/editor.js

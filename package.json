@@ -1,0 +1,13 @@
+{
+  "name": "foliowish",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pre-launch birthday magazine maker and editorial content site",
+  "type": "module",
+  "scripts": {
+    "qa": "node scripts/qa.mjs",
+    "serve": "python3 -m http.server 4173",
+    "release:unlock": "node scripts/release-unlock.mjs",
+    "release:lock": "node scripts/release-lock.mjs"
+  }
+}

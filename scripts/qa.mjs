@@ -68,6 +68,8 @@ if(!/indexedDB/.test(editor)) failures.push('Durable IndexedDB project storage m
 if(!/saveBtn/.test(editor)||!/id="saveBtn"/.test(editorHtml)) failures.push('Explicit Save control or wiring missing.');
 if(!/hydrateFromStorage/.test(editor)) failures.push('Reload persistence hydration missing.');
 if(!/Smart-fill|smartFill/.test(editor)) failures.push('Smart Fill flow missing.');
+if(!/isImportableProject/.test(editor)) failures.push('Hardened project import validation missing.');
+if(!/safePhoto/.test(editor)||!/\^data:image/.test(editor)) failures.push('Imported photo sources are not restricted to embedded image data URLs.');
 for(const src of editorFiles){
   if(!new RegExp(`<script src=["']${src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}["']`).test(editorHtml)) failures.push(`editor.html is not loading ${src}`);
 }
@@ -77,4 +79,4 @@ if(failures.length){
   failures.forEach(x=>console.error('- '+x));
   process.exit(1);
 }
-console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);
+console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + safe import wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);

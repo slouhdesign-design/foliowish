@@ -69,8 +69,9 @@ if(!/indexedDB/.test(editor)) failures.push('Durable IndexedDB project storage m
 if(!/saveBtn/.test(editor)||!/id="saveBtn"/.test(editorHtml)) failures.push('Explicit Save control or wiring missing.');
 if(!/hydrateFromStorage/.test(editor)) failures.push('Reload persistence hydration missing.');
 if(!/Smart-fill|smartFill/.test(editor)) failures.push('Smart Fill flow missing.');
-if(!/isImportableProject/.test(editor)) failures.push('Hardened project import validation missing.');
-if(!/safePhoto/.test(editor)||!/\^data:image/.test(editor)) failures.push('Imported photo sources are not restricted to embedded image data URLs.');
+if(!/isValidProject/.test(editor)) failures.push('Central project validation missing.');
+if(!/safePhoto/.test(editor)||!/\^data:image/.test(editor)) failures.push('Stored/imported photo sources are not restricted to embedded image data URLs.');
+if(!/50\*1024\*1024/.test(editor)) failures.push('Backup import size cap missing.');
 if(!/id="mobilePageInspector"/.test(editorHtml)||!/id="mobilePersonName"/.test(editorHtml)||!/id="mobileBackupBtn"/.test(editorHtml)) failures.push('Full mobile Studio editing/backup controls are missing.');
 if(!/mobilePageInspector/.test(editor)||!/mobilePersonName/.test(editor)) failures.push('Mobile Studio controls are not wired into editor rendering/actions.');
 if(!/@page\s*\{[^}]*size\s*:\s*A4\s+portrait/i.test(editorCss)) failures.push('A4 print page sizing rule missing.');
@@ -85,4 +86,4 @@ if(failures.length){
   failures.forEach(x=>console.error('- '+x));
   process.exit(1);
 }
-console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + safe import + mobile editing + A4 print wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);
+console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + central safe validation + mobile editing + A4 print wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);

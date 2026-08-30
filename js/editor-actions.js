@@ -12,22 +12,6 @@ const pageDefaults=type=>{
  if(type==='playlist')return{id,type,headline:'The soundtrack',tracks:['Road-trip opener','Current obsession','The throwback','Late-night song','Main-character song'],photos};
  return{id,type:'backcover',headline:'Here’s to the next story.',body:'Keep the good parts. Keep becoming more yourself.',photos};
 };
-const isImportableProject=p=>{
- if(!p||p.version!==1||!Array.isArray(p.pages)||!p.pages.length||!p.person||typeof p.person!=='object'||Array.isArray(p.person))return false;
- if(!Number.isInteger(p.active)||p.active<0||p.active>=p.pages.length||!Number.isFinite(Number(p.zoom))||!FW.themes[p.theme])return false;
- const text=v=>v==null||typeof v==='string',personFields=['name','age','relationship','vibe','memory'];
- if(!personFields.every(k=>text(p.person[k])))return false;
- const types=new Set(FW.pageTypes.map(([key])=>key)),safePhoto=/^data:image\/(?:jpeg|jpg|png|webp);base64,[a-z0-9+/=\r\n]+$/i;
- return p.pages.every(page=>{
-  if(!page||typeof page!=='object'||Array.isArray(page)||!types.has(page.type))return false;
-  if(page.photos!=null){if(typeof page.photos!=='object'||Array.isArray(page.photos))return false;for(const src of Object.values(page.photos))if(typeof src!=='string'||!safePhoto.test(src))return false;}
-  if(page.type==='profile'&&page.facts!=null&&!Array.isArray(page.facts))return false;
-  if(page.type==='reasons'&&page.reasons!=null&&!Array.isArray(page.reasons))return false;
-  if(page.type==='playlist'&&page.tracks!=null&&!Array.isArray(page.tracks))return false;
-  if(page.type==='timeline'&&page.items!=null&&(!Array.isArray(page.items)||!page.items.every(it=>Array.isArray(it)&&it.length>=2&&text(it[0])&&text(it[1]))))return false;
-  return true;
- });
-};
 const ordinal=value=>{const n=Number(value);if(!Number.isInteger(n)||n<0)return String(value||'');const m=n%100;if(m>=11&&m<=13)return `${n}TH`;return `${n}${({1:'ST',2:'ND',3:'RD'})[n%10]||'TH'}`;};
 FW.addPage=type=>{FW.project.pages.splice(FW.project.active+1,0,pageDefaults(type));FW.project.active++;FW.renderAll();};
 FW.smartFill=()=>{const p=FW.project.person,name=(p.name||'You').trim()||'You',age=(p.age||'').trim(),rel=p.relationship||'Friend',mem=(p.memory||'').trim()||'small adventures, big laughs, and stories worth keeping',vibe=p.vibe||'warm',reasonCount=Math.min(18,Math.max(1,Number(age)||18));const adj={fun:['chaotic in the best way','impossibly funny','always ready for the plot twist','a certified good-time person'],editorial:['effortlessly memorable','quietly magnetic','impossible to copy','always worth the cover'],minimal:['kind','steady','curious','completely yourself'],warm:['generous','funny','thoughtful','braver than you know']}[vibe]||['generous','funny','thoughtful','braver than you know'];
@@ -53,7 +37,7 @@ FW.boot=()=>{
  $('#zoomIn').onclick=()=>{FW.project.zoom=Math.min(1.05,FW.project.zoom+.06);FW.renderCurrent();FW.save(false);};$('#zoomOut').onclick=()=>{FW.project.zoom=Math.max(.35,FW.project.zoom-.06);FW.renderCurrent();FW.save(false);};
  $('#fitBtn').onclick=()=>{const w=$('.stage-wrap').clientWidth-80,h=$('.stage-wrap').clientHeight-190;FW.project.zoom=Math.max(.35,Math.min(.92,w/595,h/842));FW.renderCurrent();FW.save(false);};$('#safeBtn').onclick=()=>{FW.safeVisible=!FW.safeVisible;FW.renderCurrent();};
  $('#undoBtn').onclick=()=>FW.restoreHistory(FW.historyIndex-1);$('#redoBtn').onclick=()=>FW.restoreHistory(FW.historyIndex+1);$('#saveBtn').onclick=manualSave;$('#backupBtn').onclick=backup;const mobileBackup=$('#mobileBackupBtn');if(mobileBackup)mobileBackup.onclick=backup;
- $('#importProject').onchange=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!isImportableProject(p))throw 0;FW.project=p;FW.syncInputs();FW.renderAll();}catch{alert('That does not look like a safe FolioWish project file.');}};r.readAsText(f);e.target.value='';};
+ $('#importProject').onchange=e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>50*1024*1024){alert('Please choose a FolioWish project file under 50 MB.');e.target.value='';return;}const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!FW.isValidProject(p))throw 0;FW.project=p;FW.syncInputs();FW.renderAll();}catch{alert('That does not look like a safe FolioWish project file.');}};r.readAsText(f);e.target.value='';};
  $('#photoInput').onchange=async e=>{const file=e.target.files?.[0];if(!file||!FW.pendingPhotoSlot)return;if(file.size>15*1024*1024){alert('Please choose an image under 15 MB.');return;}try{const data=await FW.compressImage(file),page=FW.project.pages[FW.project.active];page.photos ||= {};page.photos[FW.pendingPhotoSlot]=data;FW.renderAll();}catch{alert('Could not read that image. Try JPG, PNG or WebP.');}finally{e.target.value='';FW.pendingPhotoSlot=null;}};
  $('#exportBtn').onclick=()=>{document.querySelectorAll('.mobile-drawer.open').forEach(x=>x.classList.remove('open'));const print=$('#printArea');print.innerHTML=FW.project.pages.map(p=>`<section class="print-page">${FW.renderPage(p,false)}</section>`).join('');requestAnimationFrame(()=>requestAnimationFrame(()=>window.print()));};
  document.querySelectorAll('[data-drawer]').forEach(b=>b.onclick=()=>$('#'+b.dataset.drawer).classList.add('open'));document.querySelectorAll('[data-close-drawer]').forEach(b=>b.onclick=()=>b.closest('.mobile-drawer').classList.remove('open'));

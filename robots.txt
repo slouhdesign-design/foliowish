@@ -1,0 +1,3 @@
+# FolioWish pre-launch lock
+User-agent: *
+Disallow: /

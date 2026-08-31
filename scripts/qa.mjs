@@ -84,6 +84,7 @@ for(const src of editorFiles){
 const netlify=readFileSync(join(root,'netlify.toml'),'utf8');
 const netlifyBuild=readFileSync(join(root,'scripts/netlify-build.mjs'),'utf8');
 if(!/publish\s*=\s*"_site"/.test(netlify)||!/node scripts\/netlify-build\.mjs/.test(netlify)) failures.push('Netlify must publish only the generated _site bundle.');
+if(!/command\s*=\s*"npm run qa && node scripts\/netlify-build\.mjs"/.test(netlify)) failures.push('Netlify must run the Quality Gate before building staging.');
 if(!/X-Content-Type-Options/.test(netlify)||!/X-Frame-Options/.test(netlify)) failures.push('Netlify response security headers missing.');
 if(!/X-Robots-Tag: noindex, nofollow, noarchive/.test(netlifyBuild)||!/branch === 'prelaunch'/.test(netlifyBuild)) failures.push('Netlify prelaunch noindex protection missing.');
 for(const forbidden of ['docs','.github','scripts']) if(new RegExp(`publicDirs\\s*=.*['\"]${forbidden}['\"]`).test(netlifyBuild)) failures.push(`Private/internal directory must not be in Netlify publicDirs: ${forbidden}`);
@@ -93,4 +94,4 @@ if(failures.length){
   failures.forEach(x=>console.error('- '+x));
   process.exit(1);
 }
-console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + central safe validation + mobile editing + A4 print + safe Netlify staging wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);
+console.log(`FolioWish QA passed: ${htmlFiles.length} HTML files checked, ${editorFiles.length} studio modules checked, durable Save + central safe validation + mobile editing + A4 print + gated Netlify staging wiring present, ${publicMode?'public':'pre-launch'} mode valid, internal links clean, no obvious secrets or editor network calls found.`);

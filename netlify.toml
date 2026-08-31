@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/netlify-build.mjs"
+  command = "npm run qa && node scripts/netlify-build.mjs"
   publish = "_site"
 
 [build.environment]
